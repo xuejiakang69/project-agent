@@ -1,0 +1,14 @@
+# Python
+**/__pycache__/
+*.py[cod]
+back/venv/
+back/.env
+back/uploads/
+
+# Frontend
+vue-project/node_modules/
+vue-project/dist/
+
+# IDE
+vue-project/.vscode/
+vue-project/.idea/

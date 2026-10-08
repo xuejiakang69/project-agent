@@ -1,0 +1,26 @@
+from pydantic import BaseModel, ConfigDict
+
+
+class UserRequest(BaseModel):
+    id: int
+    username: str
+    name: str
+    role: str
+    email: str | None = None
+    phone: str | None = None
+    status: int
+    avatar: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserUpdateRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    avatar: str | None = None
+
+
+class LoginResult(BaseModel):
+    data: UserRequest
+    token: str

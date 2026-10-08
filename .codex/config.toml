@@ -1,0 +1,20 @@
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+model_provider = "custom"
+model = "mimo-v2.6-pro"
+
+web_search = "disabled"
+
+[model_providers.custom]
+name = "custom"
+wire_api = "responses"
+requires_openai_auth = false
+base_url = "https://token-plan-cn.xiaomimimo.com"
+experimental_bearer_token = "PROXY_MANAGED"
+
+[projects.'c:\users\admin']
+trust_level = "trusted"
+
+[windows]
+sandbox = "unelevated"
