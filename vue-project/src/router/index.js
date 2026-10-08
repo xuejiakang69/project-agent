@@ -38,11 +38,14 @@ const router = createRouter({
           meta: { title: '用户管理', requiresAuth: true, requiresAdmin: true },
         },
         {
+          path: 'labs',
+          name: 'labs',
+          component: () => import('@/views/LabsView.vue'),
+          meta: { title: '实验室', requiresAuth: true },
+        },
+        {
           path: 'orders',
-          name: 'orders',
-          component: () => import('@/views/ModuleView.vue'),
-          props: { title: '订单中心', description: '订单查询、履约跟踪和售后处理将在这里完成。' },
-          meta: { title: '订单中心', requiresAuth: true, requiresAdmin: true },
+          redirect: '/home/labs',
         },
         {
           path: 'analytics',

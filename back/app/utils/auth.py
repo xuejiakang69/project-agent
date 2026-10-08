@@ -14,7 +14,7 @@ bearer_schema = HTTPBearer(
     auto_error= True
 )
 
-
+#查看token是否过期
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_schema),
     db: AsyncSession = Depends(get_db),

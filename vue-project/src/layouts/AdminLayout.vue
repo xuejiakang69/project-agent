@@ -7,7 +7,7 @@ import {
   EditPen,
   Location,
   Setting,
-  ShoppingCart,
+  OfficeBuilding,
   SwitchButton,
   TrendCharts,
   Upload,
@@ -201,10 +201,12 @@ function handleCommand(command) {
               <el-icon><User /></el-icon>
               <template #title>用户管理</template>
             </el-menu-item>
-            <el-menu-item index="/home/orders">
-              <el-icon><ShoppingCart /></el-icon>
-              <template #title>订单中心</template>
-            </el-menu-item>
+          </template>
+          <el-menu-item index="/home/labs">
+            <el-icon><OfficeBuilding /></el-icon>
+            <template #title>{{ isAdmin ? '实验室管理' : '实验室预约' }}</template>
+          </el-menu-item>
+          <template v-if="isAdmin">
             <el-menu-item index="/home/analytics">
               <el-icon><TrendCharts /></el-icon>
               <template #title>数据分析</template>

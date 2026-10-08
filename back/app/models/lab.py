@@ -3,8 +3,8 @@ from sqlalchemy import String, Integer
 from app.database import Base
 
 
-class Lad(Base):
-    __tablename__ = "lad"
+class Lab(Base):
+    __tablename__ = "lab"
     __table_args__ = {"comment": "实验室信息表"}
 
     name: Mapped[str] = mapped_column(

@@ -14,6 +14,12 @@ async_session_factory = async_sessionmaker(
 
 )
 
+#自动创建所有表
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
 #获取数据库会话
 async def get_db():
     async with async_session_factory() as session:
