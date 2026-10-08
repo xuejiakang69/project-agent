@@ -19,7 +19,7 @@ const displayName = computed(
 const roleLabel = computed(() => (isAdmin.value ? '系统管理员' : '普通用户'))
 const accessDescription = computed(() =>
   isAdmin.value
-    ? '你可以管理用户、订单、数据分析和系统设置。'
+    ? '你可以管理用户、实验室、设备和系统设置。'
     : '你可以使用工作台，并通过右上角头像维护个人资料。',
 )
 
@@ -102,7 +102,7 @@ function displayValue(value) {
           <p>{{ accessDescription }}</p>
           <ul>
             <li>工作台和个人资料始终可用</li>
-            <li v-if="isAdmin">用户管理、订单中心、数据分析和系统设置可用</li>
+            <li v-if="isAdmin">用户管理、实验室管理、设备管理和系统设置可用</li>
             <li v-else>管理模块仅对管理员开放</li>
           </ul>
         </div>

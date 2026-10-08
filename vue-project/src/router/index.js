@@ -48,11 +48,14 @@ const router = createRouter({
           redirect: '/home/labs',
         },
         {
+          path: 'equipments',
+          name: 'equipments',
+          component: () => import('@/views/EquipmentsView.vue'),
+          meta: { title: '设备管理', requiresAuth: true },
+        },
+        {
           path: 'analytics',
-          name: 'analytics',
-          component: () => import('@/views/ModuleView.vue'),
-          props: { title: '数据分析', description: '核心指标、趋势分析和经营报表将在这里呈现。' },
-          meta: { title: '数据分析', requiresAuth: true, requiresAdmin: true },
+          redirect: '/home/equipments',
         },
         {
           path: 'settings',

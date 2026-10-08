@@ -5,7 +5,7 @@ from app.database import Base
 
 class Lab(Base):
     __tablename__ = "lab"
-    __table_args__ = {"comment": "实验室信息表"}
+    __table_args__ = {"comment": "实验室信息表", "mysql_engine": "InnoDB"}
 
     name: Mapped[str] = mapped_column(
         String(50), comment="实验室名称", unique=True, nullable=False

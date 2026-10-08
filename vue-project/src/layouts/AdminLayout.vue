@@ -9,7 +9,7 @@ import {
   Setting,
   OfficeBuilding,
   SwitchButton,
-  TrendCharts,
+  Cpu,
   Upload,
   User,
 } from '@element-plus/icons-vue'
@@ -206,11 +206,11 @@ function handleCommand(command) {
             <el-icon><OfficeBuilding /></el-icon>
             <template #title>{{ isAdmin ? '实验室管理' : '实验室预约' }}</template>
           </el-menu-item>
+          <el-menu-item index="/home/equipments">
+            <el-icon><Cpu /></el-icon>
+            <template #title>设备管理</template>
+          </el-menu-item>
           <template v-if="isAdmin">
-            <el-menu-item index="/home/analytics">
-              <el-icon><TrendCharts /></el-icon>
-              <template #title>数据分析</template>
-            </el-menu-item>
             <el-menu-item index="/home/settings">
               <el-icon><Setting /></el-icon>
               <template #title>系统设置</template>

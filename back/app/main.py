@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from app.database import Base,engine, create_tables
 from app.models.user import User
+from app.models.lab import Lab
+from app.models.equipment import Equipment
 from app.api.auth import router as auth_router
 from app.api.files import router as file_router
 from app.api.user import router as user_router
 from app.api.lab import router as lab_router
+from app.api.equipment import router as equipment_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import UPLOAD_DIR
@@ -36,6 +39,7 @@ app.include_router(auth_router,prefix="")
 app.include_router(file_router,prefix="")
 app.include_router(user_router,prefix="")
 app.include_router(lab_router,prefix="")
+app.include_router(equipment_router,prefix="")
 
 #静态目录挂载
 app.mount("/uploads",StaticFiles(directory=UPLOAD_DIR),name="uploads")
