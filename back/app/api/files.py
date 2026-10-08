@@ -4,8 +4,9 @@ import time
 from pathlib import Path
 import uuid
 from app.schemas.common import Result
-from fastapi import APIRouter, UploadFile,File,HTTPException
+from fastapi import APIRouter, Depends, UploadFile,File,HTTPException
 from app.config import ALLOWED_EXTENSIONS,MAX_FILE_SIZE,UPLOAD_DIR
+from app.utils.auth import get_current_user
 
 
 
@@ -13,7 +14,7 @@ router = APIRouter(prefix="/api/file",tags=["文件传输"])
 
 
 @router.post("/upload")
-async def upload(file:UploadFile=File(...)):
+async def upload(file:UploadFile=File(...),get_current_user: str = Depends(get_current_user)):
     #判断名称是否为空
     if not file.filename:
         raise HTTPException(detail="名称不能为空")

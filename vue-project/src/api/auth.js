@@ -204,6 +204,37 @@ export async function uploadAvatar(file) {
   }
 }
 
+export async function listUsers({ page = 1, pageSize = 20, keyword = '' } = {}) {
+  try {
+    const normalizedKeyword = String(keyword ?? '').trim()
+    const response = await axios.get(`${API_BASE_URL}/user/all`, {
+      ...protectedRequestConfig(),
+      params: {
+        page: Number(page) || 1,
+        page_size: Number(pageSize) || 20,
+        ...(normalizedKeyword ? { keyword: normalizedKeyword } : {}),
+      },
+    })
+
+    const result = response.data
+    const pageResult = result?.result
+
+    if (result?.code !== 0 || !pageResult || !Array.isArray(pageResult.items)) {
+      throw new Error(result?.message || '用户列表响应格式不正确')
+    }
+
+    return {
+      items: pageResult.items.map(normalizeUser),
+      total: Number(pageResult.total) || 0,
+      page: Number(pageResult.page) || Number(page) || 1,
+      page_size: Number(pageResult.page_size) || Number(pageSize) || 20,
+      total_pages: Number(pageResult.total_pages) || 0,
+    }
+  } catch (error) {
+    throw new Error(getErrorMessage(error, '用户列表获取失败，请稍后重试'))
+  }
+}
+
 export function readToken() {
   return (
     window.localStorage.getItem(TOKEN_KEY) ||

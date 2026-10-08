@@ -4,6 +4,7 @@
 back/venv/
 back/.env
 back/uploads/
+.vscode/
 
 # Frontend
 vue-project/node_modules/

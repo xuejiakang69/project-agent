@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -7,6 +7,7 @@ from app.schemas.user import UserUpdateRequest
 from app.utils.password import hashed_password
 
 
+#根据用户名查找
 async def get_user_by_username(
     username: str,
     db: AsyncSession,
@@ -14,7 +15,7 @@ async def get_user_by_username(
     result = await db.execute(select(User).where(User.username == username))
     return result.scalar_one_or_none()
 
-
+#添加用户
 async def add_user(data: CreateResult, db: AsyncSession):
     existing_user = await get_user_by_username(data.username, db)
     if existing_user:
@@ -32,7 +33,7 @@ async def add_user(data: CreateResult, db: AsyncSession):
     await db.refresh(user)
     return user
 
-
+#更新用户
 async def update_user(
     current_user: User,
     data: UserUpdateRequest,
@@ -46,3 +47,29 @@ async def update_user(
     await db.flush()
     await db.refresh(current_user)
     return current_user
+
+
+
+#查看所有用户 （只有管理员才有权限）
+async def get_users_paginated(
+    db: AsyncSession,
+    *,
+    page: int,
+    page_size: int,
+    keyword: str | None,
+) -> tuple[list[User], int]:
+    stmt = select(User)
+    count_stmt = select(func.count(User.id))
+
+    if keyword and keyword.strip():
+        pattern = f"%{keyword.strip()}%"
+        stmt = stmt.where(User.username.ilike(pattern))
+        count_stmt = count_stmt.where(User.username.ilike(pattern))
+
+    total = await db.scalar(count_stmt) or 0
+    result = await db.execute(
+        stmt.order_by(User.create_time.desc(), User.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    return list(result.scalars().all()), total

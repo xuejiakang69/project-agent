@@ -1,4 +1,4 @@
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import {
   clearSession,
   login as loginRequest,
@@ -12,6 +12,8 @@ const state = reactive({
 })
 
 export function useAuthStore() {
+  const isAdmin = computed(() => state.user?.role === 'admin')
+
   async function login(payload) {
     state.user = await loginRequest(payload)
     return state.user
@@ -33,6 +35,7 @@ export function useAuthStore() {
 
   return {
     state,
+    isAdmin,
     login,
     register,
     updateProfile,

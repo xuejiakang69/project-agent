@@ -34,6 +34,7 @@ const profileForm = reactive({
 })
 
 const currentUser = computed(() => authStore.state.user || {})
+const isAdmin = authStore.isAdmin
 const displayName = computed(
   () =>
     currentUser.value.displayName ||
@@ -195,22 +196,24 @@ function handleCommand(command) {
             <el-icon><Location /></el-icon>
             <template #title>工作台</template>
           </el-menu-item>
-          <el-menu-item index="/home/users">
-            <el-icon><User /></el-icon>
-            <template #title>用户管理</template>
-          </el-menu-item>
-          <el-menu-item index="/home/orders">
-            <el-icon><ShoppingCart /></el-icon>
-            <template #title>订单中心</template>
-          </el-menu-item>
-          <el-menu-item index="/home/analytics">
-            <el-icon><TrendCharts /></el-icon>
-            <template #title>数据分析</template>
-          </el-menu-item>
-          <el-menu-item index="/home/settings">
-            <el-icon><Setting /></el-icon>
-            <template #title>系统设置</template>
-          </el-menu-item>
+          <template v-if="isAdmin">
+            <el-menu-item index="/home/users">
+              <el-icon><User /></el-icon>
+              <template #title>用户管理</template>
+            </el-menu-item>
+            <el-menu-item index="/home/orders">
+              <el-icon><ShoppingCart /></el-icon>
+              <template #title>订单中心</template>
+            </el-menu-item>
+            <el-menu-item index="/home/analytics">
+              <el-icon><TrendCharts /></el-icon>
+              <template #title>数据分析</template>
+            </el-menu-item>
+            <el-menu-item index="/home/settings">
+              <el-icon><Setting /></el-icon>
+              <template #title>系统设置</template>
+            </el-menu-item>
+          </template>
         </el-menu>
       </el-aside>
 
