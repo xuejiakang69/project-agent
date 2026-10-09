@@ -14,6 +14,7 @@ import {
   User,
 } from '@element-plus/icons-vue'
 import { listLabs } from '@/api/lab'
+import ReservationDialog from '@/components/ReservationDialog.vue'
 import { resolveMediaUrl } from '@/api/auth'
 
 const router = useRouter()
@@ -25,6 +26,8 @@ const total = ref(0)
 const totalPages = ref(0)
 const searchKeyword = ref('')
 const activeKeyword = ref('')
+const reservationVisible = ref(false)
+const reservationLab = ref({})
 
 async function loadLabs() {
   loading.value = true
@@ -89,8 +92,9 @@ function viewLabEquipments(lab) {
   })
 }
 
-function reserveLab() {
-  ElMessage.info('预约功能待开发')
+function reserveLab(lab) {
+  reservationLab.value = lab
+  reservationVisible.value = true
 }
 
 function goBack() {
@@ -200,7 +204,7 @@ onMounted(loadLabs)
               <el-icon><Cpu /></el-icon>
               查看设备
             </el-button>
-            <el-button type="primary" @click="reserveLab">
+            <el-button type="primary" @click="reserveLab(lab)">
               <el-icon><Calendar /></el-icon>
               立即预约
             </el-button>
@@ -224,6 +228,11 @@ onMounted(loadLabs)
         @size-change="changePageSize"
       />
     </footer>
+    <ReservationDialog
+      v-model="reservationVisible"
+      :lab-id="reservationLab.id"
+      :lab-name="reservationLab.name"
+    />
   </section>
 </template>
 

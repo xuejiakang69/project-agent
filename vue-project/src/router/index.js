@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+﻿import { createRouter, createWebHistory } from 'vue-router'
 import { readSession } from '@/api/auth'
 
 const router = createRouter({
@@ -56,6 +56,20 @@ const router = createRouter({
           meta: { title: '实验室设备', requiresAuth: true },
         },
         {
+          path: 'my-reservations',
+          name: 'my-reservations',
+          component: () => import('@/views/ReservationsView.vue'),
+          props: { mode: 'mine' },
+          meta: { title: '我的预约', requiresAuth: true, requiresStudent: true },
+        },
+        {
+          path: 'reservations',
+          name: 'reservations',
+          component: () => import('@/views/ReservationsView.vue'),
+          props: { mode: 'all' },
+          meta: { title: '已预约', requiresAuth: true, requiresAdmin: true },
+        },
+        {
           path: 'orders',
           redirect: '/home/labs',
         },
@@ -73,7 +87,10 @@ const router = createRouter({
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/ModuleView.vue'),
-          props: { title: '系统设置', description: '组织配置、安全策略和通知设置将在这里维护。' },
+          props: {
+            title: '系统设置',
+            description: '组织配置、安全策略和通知设置将在这里维护。',
+          },
           meta: { title: '系统设置', requiresAuth: true, requiresAdmin: true },
         },
       ],
@@ -96,11 +113,17 @@ router.beforeEach((to) => {
     return { name: 'dashboard' }
   }
 
+  if (to.meta.requiresStudent && user?.role !== 'student') {
+    return { name: 'dashboard' }
+  }
+
   if (to.meta.guestOnly && user) {
     return { name: 'dashboard' }
   }
 
-  document.title = to.meta.title ? `${to.meta.title} · 智能实验室预约系统` : '智能实验室预约系统'
+  document.title = to.meta.title
+    ? `${to.meta.title} - 智能实验室预约系统`
+    : '智能实验室预约系统'
 })
 
 export default router

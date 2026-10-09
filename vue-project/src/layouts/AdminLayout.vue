@@ -9,6 +9,7 @@ import {
   Setting,
   OfficeBuilding,
   SwitchButton,
+  Calendar,
   Cpu,
   Upload,
   User,
@@ -36,7 +37,6 @@ const profileForm = reactive({
 const currentUser = computed(() => authStore.state.user || {})
 const isAdmin = authStore.isAdmin
 const isStudent = authStore.isStudent
-console.log('isStudent', isStudent)
 const displayName = computed(
   () =>
     currentUser.value.displayName ||
@@ -203,6 +203,10 @@ function handleCommand(command) {
               <el-icon><OfficeBuilding /></el-icon>
               <template #title>实验室预约</template>
             </el-menu-item>
+            <el-menu-item index="/home/my-reservations">
+              <el-icon><Calendar /></el-icon>
+              <template #title>我的预约</template>
+            </el-menu-item>
           </template>
           <template v-if="isAdmin">
             <el-menu-item index="/home/users">
@@ -218,6 +222,10 @@ function handleCommand(command) {
             <el-menu-item index="/home/equipments">
               <el-icon><Cpu /></el-icon>
               <template #title>设备管理</template>
+            </el-menu-item>
+            <el-menu-item index="/home/reservations">
+              <el-icon><Calendar /></el-icon>
+              <template #title>已预约</template>
             </el-menu-item>
           </template>
           <template v-if="isAdmin">

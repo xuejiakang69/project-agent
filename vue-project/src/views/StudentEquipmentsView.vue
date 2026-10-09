@@ -11,6 +11,7 @@ import {
   Search,
 } from '@element-plus/icons-vue'
 import { listEquipments } from '@/api/equipment'
+import ReservationDialog from '@/components/ReservationDialog.vue'
 import { resolveMediaUrl } from '@/api/auth'
 
 const route = useRoute()
@@ -28,6 +29,8 @@ const total = ref(0)
 const totalPages = ref(0)
 const searchKeyword = ref('')
 const activeKeyword = ref('')
+const reservationVisible = ref(false)
+const reservationEquipment = ref(null)
 
 async function loadEquipments() {
   if (!Number.isInteger(labId) || labId <= 0) {
@@ -88,8 +91,9 @@ function statusLabel(status) {
   return Number(status) === 1 ? '正常' : '维修中'
 }
 
-function reserveLab() {
-  ElMessage.info('预约功能待开发')
+function reserveEquipment(equipment) {
+  reservationEquipment.value = equipment
+  reservationVisible.value = true
 }
 
 function goBack() {
@@ -98,7 +102,7 @@ function goBack() {
     return
   }
 
-  router.push('/home/student-labs')
+  router.push('/home/student/labs')
 }
 
 onMounted(loadEquipments)
@@ -118,12 +122,7 @@ onMounted(loadEquipments)
             <ArrowLeft />
             返回上一页
           </el-button>
-          <el-button type="primary" size="large" @click="reserveLab">
-            <el-icon>
-              <Calendar />
-            </el-icon>
-            预约实验室
-          </el-button>
+
         </div>
 
       </div>
@@ -140,7 +139,7 @@ onMounted(loadEquipments)
       <div class="lab-banner__content">
         <span>当前实验室</span>
         <strong>{{ labName || `实验室 #${labId}` }}</strong>
-        <p>设备仅提供查看功能，如需使用请先发起实验室预约。</p>
+        <p>点击设备卡片可预约当前实验室并自动选择该设备。</p>
       </div>
 
       <div class="lab-banner__count">
@@ -219,12 +218,17 @@ onMounted(loadEquipments)
             </div>
           </div>
 
+
           <div class="equipment-card__actions">
-            <el-button type="primary" @click="reserveLab">
+            <el-button
+              type="primary"
+              :disabled="Number(equipment.status) !== 1"
+              @click="reserveEquipment(equipment)"
+            >
               <el-icon>
                 <Calendar />
               </el-icon>
-              预约使用
+              预约
             </el-button>
           </div>
         </article>
@@ -239,6 +243,13 @@ onMounted(loadEquipments)
         :page-sizes="[8, 12, 16, 24]" layout="sizes, prev, pager, next" background @current-change="changePage"
         @size-change="changePageSize" />
     </footer>
+    <ReservationDialog
+      v-model="reservationVisible"
+      :lab-id="labId"
+      :lab-name="labName"
+      :equipment-id="reservationEquipment?.id"
+      :equipment-name="reservationEquipment?.name"
+    />
   </section>
 </template>
 
