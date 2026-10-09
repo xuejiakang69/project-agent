@@ -88,7 +88,7 @@ async def delete_laboratory(
     )
 
 
-#查询实验室列表，所有登录用户可查看
+#查询实验室列表
 @router.get("/list")
 async def list_laboratories(
     page: int = Query(1, ge=1),

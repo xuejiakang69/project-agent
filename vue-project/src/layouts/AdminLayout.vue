@@ -35,6 +35,8 @@ const profileForm = reactive({
 
 const currentUser = computed(() => authStore.state.user || {})
 const isAdmin = authStore.isAdmin
+const isStudent = authStore.isStudent
+console.log('isStudent', isStudent)
 const displayName = computed(
   () =>
     currentUser.value.displayName ||
@@ -196,20 +198,28 @@ function handleCommand(command) {
             <el-icon><Location /></el-icon>
             <template #title>工作台</template>
           </el-menu-item>
+          <template v-if="isStudent">
+            <el-menu-item index="/home/student/labs">
+              <el-icon><OfficeBuilding /></el-icon>
+              <template #title>实验室预约</template>
+            </el-menu-item>
+          </template>
           <template v-if="isAdmin">
             <el-menu-item index="/home/users">
               <el-icon><User /></el-icon>
               <template #title>用户管理</template>
             </el-menu-item>
           </template>
-          <el-menu-item index="/home/labs">
-            <el-icon><OfficeBuilding /></el-icon>
-            <template #title>{{ isAdmin ? '实验室管理' : '实验室预约' }}</template>
-          </el-menu-item>
-          <el-menu-item index="/home/equipments">
-            <el-icon><Cpu /></el-icon>
-            <template #title>设备管理</template>
-          </el-menu-item>
+          <template v-if="isAdmin">
+            <el-menu-item index="/home/labs">
+              <el-icon><OfficeBuilding /></el-icon>
+              <template #title>实验室管理</template>
+            </el-menu-item>
+            <el-menu-item index="/home/equipments">
+              <el-icon><Cpu /></el-icon>
+              <template #title>设备管理</template>
+            </el-menu-item>
+          </template>
           <template v-if="isAdmin">
             <el-menu-item index="/home/settings">
               <el-icon><Setting /></el-icon>
@@ -281,12 +291,17 @@ function handleCommand(command) {
 
 <style scoped>
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .app-header {
+  position: relative;
+  z-index: 10;
   display: flex;
   height: 64px;
+  flex: 0 0 64px;
   padding: 0 22px;
   border-bottom: 1px solid var(--app-border);
   align-items: center;
@@ -353,11 +368,15 @@ function handleCommand(command) {
 }
 
 .app-body {
-  min-height: calc(100vh - 64px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-aside {
-  min-height: calc(100vh - 64px);
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 10px;
   background: #111827;
 }
@@ -388,7 +407,14 @@ function handleCommand(command) {
 }
 
 .app-main {
+  width: 100%;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: 0;
   background: #ffffff;
 }

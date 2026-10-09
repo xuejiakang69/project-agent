@@ -1,16 +1,22 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  Cpu,
   Delete,
   EditPen,
+  Picture,
   Plus,
   RefreshLeft,
   Search,
+  Upload,
 } from '@element-plus/icons-vue'
-import { createLab, deleteLab, listLabs, updateLab } from '@/api/lab'
+import { createLab, deleteLab, listLabs, updateLab, uploadLabImage } from '@/api/lab'
+import { resolveMediaUrl } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const isAdmin = authStore.isAdmin
 const pageTitle = computed(() => (isAdmin.value ? '实验室管理' : '实验室预约'))
@@ -33,10 +39,12 @@ const formDialogVisible = ref(false)
 const formLoading = ref(false)
 const formRef = ref()
 const editingLabId = ref(null)
+const imageUploading = ref(false)
 
 const form = reactive({
   name: '',
   description: '',
+  img: '',
   status: 1,
   location: '',
   open_time: '',
@@ -51,6 +59,9 @@ const formRules = {
   ],
   description: [
     { max: 255, message: '实验室描述不能超过 255 个字符', trigger: 'blur' },
+  ],
+  img: [
+    { max: 200, message: '实验室图片路径不能超过 200 个字符', trigger: 'blur' },
   ],
   location: [
     { max: 50, message: '实验室地点不能超过 50 个字符', trigger: 'blur' },
@@ -85,6 +96,7 @@ function createEmptyForm() {
   return {
     name: '',
     description: '',
+    img: '',
     status: 1,
     location: '',
     open_time: '',
@@ -157,6 +169,7 @@ function openEditDialog(row) {
   Object.assign(form, {
     name: row.name || '',
     description: row.description || '',
+    img: row.img || '',
     status: Number(row.status) === 0 ? 0 : 1,
     location: row.location || '',
     open_time: row.open_time || '',
@@ -166,8 +179,48 @@ function openEditDialog(row) {
   formDialogVisible.value = true
 }
 
+function beforeImageUpload(file) {
+  const isImage = file.type.startsWith('image/')
+  const isLt2M = file.size / 1024 / 1024 < 2
+
+  if (!isImage) {
+    ElMessage.error('实验室图片只能是图片文件')
+    return false
+  }
+
+  if (!isLt2M) {
+    ElMessage.error('实验室图片不能超过 2MB')
+    return false
+  }
+
+  return true
+}
+
+async function handleImageUpload({ file }) {
+  if (!beforeImageUpload(file)) {
+    throw new Error('图片校验失败')
+  }
+
+  imageUploading.value = true
+
+  try {
+    const uploaded = await uploadLabImage(file)
+    form.img = uploaded.path
+    ElMessage.success('实验室图片上传成功')
+    return uploaded
+  } catch (error) {
+    ElMessage.error(error.message || '实验室图片上传失败')
+    throw error
+  } finally {
+    imageUploading.value = false
+  }
+}
+
+function removeImage() {
+  form.img = ''
+}
 async function submitLab() {
-  if (!isAdmin.value || formLoading.value) return
+  if (!isAdmin.value || formLoading.value || imageUploading.value) return
 
   try {
     await formRef.value.validate()
@@ -176,6 +229,7 @@ async function submitLab() {
     const payload = {
       name: form.name,
       description: form.description,
+      img: form.img,
       status: form.status,
       location: form.location,
       open_time: form.open_time,
@@ -229,6 +283,13 @@ async function confirmDelete(row) {
       ElMessage.error(error.message)
     }
   }
+}
+
+function viewLabEquipments(row) {
+  router.push({
+    name: 'equipments',
+    query: { lab_id: row.id },
+  })
 }
 
 function statusLabel(status) {
@@ -296,8 +357,26 @@ onMounted(loadLabs)
         <el-table-column label="实验室" min-width="220">
           <template #default="{ row }">
             <div class="lab-cell">
-              <strong>{{ row.name }}</strong>
-              <span>{{ row.description || '暂无实验室介绍' }}</span>
+              <el-image
+                v-if="row.img"
+                :src="resolveMediaUrl(row.img)"
+                :preview-src-list="[resolveMediaUrl(row.img)]"
+                preview-teleported
+                fit="cover"
+                class="lab-cell__image"
+              >
+                <template #error>
+                  <el-icon class="lab-cell__image-error"><Picture /></el-icon>
+                </template>
+              </el-image>
+              <div v-else class="lab-cell__placeholder">
+                <el-icon><Picture /></el-icon>
+              </div>
+
+              <div class="lab-cell__identity">
+                <strong>{{ row.name }}</strong>
+                <span>{{ row.description || '暂无实验室介绍' }}</span>
+              </div>
             </div>
           </template>
         </el-table-column>
@@ -329,17 +408,23 @@ onMounted(loadLabs)
           </template>
         </el-table-column>
 
-        <el-table-column v-if="isAdmin" label="操作" width="176" fixed="right">
+        <el-table-column label="操作" :width="isAdmin ? 270 : 116" fixed="right">
           <template #default="{ row }">
             <div class="row-actions">
-              <el-button text type="primary" @click="openEditDialog(row)">
-                <el-icon><EditPen /></el-icon>
-                编辑
+              <el-button text type="primary" @click="viewLabEquipments(row)">
+                <el-icon><Cpu /></el-icon>
+                查看设备
               </el-button>
-              <el-button text type="danger" @click="confirmDelete(row)">
-                <el-icon><Delete /></el-icon>
-                删除
-              </el-button>
+              <template v-if="isAdmin">
+                <el-button text type="primary" @click="openEditDialog(row)">
+                  <el-icon><EditPen /></el-icon>
+                  编辑
+                </el-button>
+                <el-button text type="danger" @click="confirmDelete(row)">
+                  <el-icon><Delete /></el-icon>
+                  删除
+                </el-button>
+              </template>
             </div>
           </template>
         </el-table-column>
@@ -386,6 +471,47 @@ onMounted(loadLabs)
           />
         </el-form-item>
 
+        <el-form-item label="实验室图片" prop="img">
+          <div class="image-editor">
+            <el-upload
+              :show-file-list="false"
+              :http-request="handleImageUpload"
+              accept="image/*"
+              :disabled="imageUploading"
+            >
+              <div class="image-upload">
+                <el-image
+                  v-if="form.img"
+                  :src="resolveMediaUrl(form.img)"
+                  fit="cover"
+                  class="image-upload__preview"
+                >
+                  <template #error>
+                    <el-icon class="image-upload__error"><Picture /></el-icon>
+                  </template>
+                </el-image>
+                <div v-else class="image-upload__empty">
+                  <el-icon><Upload /></el-icon>
+                  <span>上传图片</span>
+                </div>
+              </div>
+            </el-upload>
+
+            <div class="image-editor__actions">
+              <span>支持 JPG、PNG、WebP，最大 2MB</span>
+              <el-button
+                v-if="form.img"
+                text
+                type="danger"
+                :disabled="imageUploading"
+                @click="removeImage"
+              >
+                <el-icon><Delete /></el-icon>
+                移除图片
+              </el-button>
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="实验室介绍" prop="description">
           <el-input
             v-model="form.description"
@@ -446,7 +572,11 @@ onMounted(loadLabs)
 
       <template #footer>
         <el-button @click="formDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="formLoading" @click="submitLab">
+        <el-button
+          type="primary"
+          :loading="formLoading || imageUploading"
+          @click="submitLab"
+        >
           {{ editingLabId ? '保存修改' : '确认新增' }}
         </el-button>
       </template>
@@ -514,8 +644,32 @@ onMounted(loadLabs)
 .lab-cell {
   display: flex;
   min-width: 0;
-  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   line-height: 1.55;
+}
+
+.lab-cell__image,
+.lab-cell__placeholder {
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+}
+
+.lab-cell__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-text-secondary);
+  background: var(--app-background);
+}
+
+.lab-cell__identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
 }
 
 .lab-cell strong {
@@ -567,6 +721,48 @@ onMounted(loadLabs)
   min-width: 0;
 }
 
+.image-editor {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.image-upload {
+  width: 112px;
+  height: 112px;
+  overflow: hidden;
+  border: 1px dashed var(--app-border);
+  border-radius: 6px;
+  background: var(--app-background);
+}
+
+.image-upload__preview {
+  width: 100%;
+  height: 100%;
+}
+
+.image-upload__empty,
+.image-upload__error {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+}
+
+.image-editor__actions {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--app-text-secondary);
+  font-size: 12px;
+}
+
 @media (max-width: 768px) {
   .labs-page {
     padding: 18px 14px;
@@ -605,6 +801,11 @@ onMounted(loadLabs)
 
   .form-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .image-editor {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

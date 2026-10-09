@@ -11,6 +11,7 @@ class Lab(Base):
         String(50), comment="实验室名称", unique=True, nullable=False
     )
     description: Mapped[str | None] = mapped_column(String(255), comment="实验室描述")
+    img: Mapped[str | None] = mapped_column(String(200), comment="图片", nullable=True)
     status: Mapped[int] = mapped_column(
         Integer, default=1, comment="状态:0-禁用,1-正常"
     )

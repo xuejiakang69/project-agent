@@ -41,7 +41,19 @@ const router = createRouter({
           path: 'labs',
           name: 'labs',
           component: () => import('@/views/LabsView.vue'),
-          meta: { title: '实验室', requiresAuth: true },
+          meta: { title: '实验室管理', requiresAuth: true, requiresAdmin: true },
+        },
+        {
+          path: 'student/labs',
+          name: 'student-labs',
+          component: () => import('@/views/StudentLabsView.vue'),
+          meta: { title: '实验室预约', requiresAuth: true },
+        },
+        {
+          path: 'student/labs/:labId/equipments',
+          name: 'student-lab-equipments',
+          component: () => import('@/views/StudentEquipmentsView.vue'),
+          meta: { title: '实验室设备', requiresAuth: true },
         },
         {
           path: 'orders',
@@ -51,7 +63,7 @@ const router = createRouter({
           path: 'equipments',
           name: 'equipments',
           component: () => import('@/views/EquipmentsView.vue'),
-          meta: { title: '设备管理', requiresAuth: true },
+          meta: { title: '设备管理', requiresAuth: true, requiresAdmin: true },
         },
         {
           path: 'analytics',

@@ -25,6 +25,7 @@ async def add_lab(data, db: AsyncSession) -> Lab | None:
     lab = Lab(
         name=data.name,
         description=data.description,
+        img=data.img,
         status=data.status,
         location=data.location,
         open_time=data.open_time,

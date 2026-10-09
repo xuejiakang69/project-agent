@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-import { readToken } from '@/api/auth'
+import { readToken, resolveMediaUrl } from '@/api/auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
@@ -40,15 +40,16 @@ function requestConfig() {
   }
 }
 
-function normalizePayload(payload = {}) {
-  const normalizeText = (value) => {
-    const text = String(value ?? '').trim()
-    return text || null
-  }
+function normalizeText(value) {
+  const text = String(value ?? '').trim()
+  return text || null
+}
 
+function normalizePayload(payload = {}) {
   return {
     name: String(payload.name ?? '').trim(),
     description: normalizeText(payload.description),
+    img: normalizeText(payload.img),
     status: Number(payload.status) === 0 ? 0 : 1,
     location: normalizeText(payload.location),
     open_time: normalizeText(payload.open_time),
@@ -63,7 +64,8 @@ function normalizePayload(payload = {}) {
 function normalizeUpdatePayload(payload = {}) {
   return {
     name: String(payload.name ?? '').trim() || null,
-    description: payload.description === '' ? null : payload.description,
+    description: normalizeText(payload.description),
+    img: normalizeText(payload.img),
     status: Number(payload.status) === 0 ? 0 : 1,
     location: payload.location === '' ? null : payload.location,
     open_time: payload.open_time === '' ? null : payload.open_time,
@@ -82,6 +84,7 @@ function normalizeLab(lab) {
     status: Number(lab.status) === 0 ? 0 : 1,
     capacity: lab.capacity === null ? null : Number(lab.capacity),
     description: lab.description || '',
+    img: lab.img || '',
     location: lab.location || '',
     open_time: lab.open_time || '',
     close_time: lab.close_time || '',
@@ -174,5 +177,34 @@ export async function deleteLab(id) {
     return true
   } catch (error) {
     throw new Error(getErrorMessage(error, '实验室删除失败，请稍后重试'))
+  }
+}
+export async function uploadLabImage(file) {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await axios.post(`${API_BASE_URL}/file/upload`, formData, {
+      timeout: 20000,
+      headers: {
+        ...(readToken() ? { Authorization: `Bearer ${readToken()}` } : {}),
+      },
+    })
+
+    const result = response.data
+    const uploaded = result?.result
+
+    if (result?.code !== 0 || !uploaded) {
+      throw new Error(result?.message || '实验室图片上传响应格式不正确')
+    }
+
+    const path = uploaded.disk_name || uploaded.url
+
+    return {
+      path,
+      url: resolveMediaUrl(path),
+    }
+  } catch (error) {
+    throw new Error(getErrorMessage(error, '实验室图片上传失败，请稍后重试'))
   }
 }

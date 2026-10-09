@@ -106,6 +106,7 @@ async def list_equipments(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     keyword: str | None = Query(None, max_length=100),
+    lab_id: int | None = Query(None, ge=1),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> Result[EquipmentPageResult]:
@@ -114,6 +115,7 @@ async def list_equipments(
         page=page,
         page_size=page_size,
         keyword=keyword,
+        lab_id=lab_id,
     )
 
     return Result[EquipmentPageResult](

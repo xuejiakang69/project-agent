@@ -10,6 +10,7 @@ class LabRequest(BaseModel):
     id: int
     name: str
     description: str | None = Field(default=None, max_length=255)
+    img: str | None = Field(default=None, max_length=200)
     status: LabStatus
     location: str | None = Field(default=None, max_length=50)
     open_time: str | None = Field(default=None, max_length=50)
@@ -23,6 +24,7 @@ class LabRequest(BaseModel):
 class LabUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=50)
     description: str | None = Field(default=None, max_length=255)
+    img: str | None = Field(default=None, max_length=200)
     status: LabStatus | None = None
     location: str | None = Field(default=None, max_length=50)
     open_time: str | None = Field(default=None, max_length=50)
@@ -34,6 +36,7 @@ class LabUpdateRequest(BaseModel):
 class LabCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=50)
     description: str | None = Field(default=None, max_length=255)
+    img: str | None = Field(default=None, max_length=200)
     status: LabStatus = 1
     location: str | None = Field(default=None, max_length=50)
     open_time: str | None = Field(default=None, max_length=50)

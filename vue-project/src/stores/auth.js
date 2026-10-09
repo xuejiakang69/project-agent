@@ -13,6 +13,7 @@ const state = reactive({
 
 export function useAuthStore() {
   const isAdmin = computed(() => state.user?.role === 'admin')
+  const isStudent = computed(() => state.user?.role === 'student')
 
   async function login(payload) {
     state.user = await loginRequest(payload)
@@ -36,6 +37,7 @@ export function useAuthStore() {
   return {
     state,
     isAdmin,
+    isStudent,
     login,
     register,
     updateProfile,

@@ -79,6 +79,7 @@ async def get_equipments_paginated(
     page: int,
     page_size: int,
     keyword: str | None,
+    lab_id: int | None,
 ) -> tuple[list[tuple[Equipment, str | None]], int]:
     normalized_keyword = (keyword or "").strip()
 
@@ -87,6 +88,10 @@ async def get_equipments_paginated(
         Lab,
         Equipment.lab_id == Lab.id,
     )
+
+    if lab_id is not None:
+        stmt = stmt.where(Equipment.lab_id == lab_id)
+        count_stmt = count_stmt.where(Equipment.lab_id == lab_id)
 
     if normalized_keyword:
         pattern = f"%{normalized_keyword}%"

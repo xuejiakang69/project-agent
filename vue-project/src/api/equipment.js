@@ -83,7 +83,7 @@ function validateEquipmentResponse(result, fallbackMessage) {
   return normalizeEquipment(equipment)
 }
 
-export async function listEquipments({ page = 1, pageSize = 10, keyword = '' } = {}) {
+export async function listEquipments({ page = 1, pageSize = 10, keyword = '', labId = null } = {}) {
   try {
     const normalizedKeyword = String(keyword ?? '').trim()
     const response = await axios.get(`${API_BASE_URL}/equipment/list`, {
@@ -92,6 +92,7 @@ export async function listEquipments({ page = 1, pageSize = 10, keyword = '' } =
         page: Number(page) || 1,
         page_size: Number(pageSize) || 10,
         ...(normalizedKeyword ? { keyword: normalizedKeyword } : {}),
+        ...(labId ? { lab_id: Number(labId) } : {}),
       },
     })
 

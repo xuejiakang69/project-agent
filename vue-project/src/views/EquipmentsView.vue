@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Delete,
@@ -21,6 +22,7 @@ import { listLabs } from '@/api/lab'
 import { resolveMediaUrl } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
+const route = useRoute()
 const authStore = useAuthStore()
 const isAdmin = authStore.isAdmin
 const pageTitle = computed(() => (isAdmin.value ? '设备管理' : '设备信息'))
@@ -38,6 +40,8 @@ const total = ref(0)
 const totalPages = ref(0)
 const searchKeyword = ref('')
 const activeKeyword = ref('')
+const filterLabId = ref(null)
+const activeLabId = ref(null)
 
 const formDialogVisible = ref(false)
 const formLoading = ref(false)
@@ -113,6 +117,7 @@ async function loadEquipments() {
       page: page.value,
       pageSize: pageSize.value,
       keyword: activeKeyword.value,
+      labId: activeLabId.value,
     })
 
     equipments.value = result.items
@@ -153,6 +158,7 @@ async function loadLabOptions() {
 
 function searchEquipments() {
   activeKeyword.value = searchKeyword.value.trim()
+  activeLabId.value = filterLabId.value
   page.value = 1
   loadEquipments()
 }
@@ -160,6 +166,8 @@ function searchEquipments() {
 function resetSearch() {
   searchKeyword.value = ''
   activeKeyword.value = ''
+  filterLabId.value = null
+  activeLabId.value = null
   page.value = 1
   loadEquipments()
 }
@@ -315,7 +323,16 @@ function statusTagType(status) {
   return Number(status) === 1 ? 'success' : 'warning'
 }
 
-onMounted(loadEquipments)
+onMounted(async () => {
+  const initialLabId = Number(route.query.lab_id)
+  if (Number.isInteger(initialLabId) && initialLabId > 0) {
+    filterLabId.value = initialLabId
+    activeLabId.value = initialLabId
+  }
+
+  await loadLabOptions()
+  await loadEquipments()
+})
 </script>
 
 <template>
@@ -334,6 +351,23 @@ onMounted(loadEquipments)
 
     <el-card class="equipments-card" shadow="never">
       <div class="toolbar">
+        <el-select
+          v-model="filterLabId"
+          class="toolbar__lab-filter"
+          clearable
+          filterable
+          placeholder="全部实验室"
+          :disabled="loading"
+          @change="searchEquipments"
+        >
+          <el-option
+            v-for="lab in labOptions"
+            :key="lab.value"
+            :label="lab.label"
+            :value="lab.value"
+          />
+        </el-select>
+
         <el-input
           v-model.trim="searchKeyword"
           class="toolbar__search"
@@ -634,7 +668,13 @@ onMounted(loadEquipments)
   gap: 16px;
 }
 
+.toolbar__lab-filter {
+  flex: 0 0 220px;
+  width: 220px;
+}
+
 .toolbar__search {
+  flex: 1 1 360px;
   width: min(460px, 100%);
 }
 
@@ -796,6 +836,7 @@ onMounted(loadEquipments)
     flex-direction: column;
   }
 
+  .toolbar__lab-filter,
   .toolbar__search {
     width: 100%;
   }

@@ -12,16 +12,21 @@ import { useAuthStore } from '@/stores/auth'
 const authStore = useAuthStore()
 const user = computed(() => authStore.state.user || {})
 const isAdmin = authStore.isAdmin
+const isStudent = authStore.isStudent
 
 const displayName = computed(
   () => user.value.displayName || user.value.name || user.value.username || '当前用户',
 )
-const roleLabel = computed(() => (isAdmin.value ? '系统管理员' : '普通用户'))
-const accessDescription = computed(() =>
-  isAdmin.value
-    ? '你可以管理用户、实验室、设备和系统设置。'
-    : '你可以使用工作台，并通过右上角头像维护个人资料。',
-)
+const roleLabel = computed(() => {
+  if (isAdmin.value) return '系统管理员'
+  if (isStudent.value) return '学生'
+  return '普通用户'
+})
+const accessDescription = computed(() => {
+  if (isAdmin.value) return '你可以管理用户、实验室、设备和系统设置。'
+  if (isStudent.value) return '你可以通过侧边栏进入实验室预约页面，并查看实验室设备。'
+  return '你可以使用工作台，并通过右上角头像维护个人资料。'
+})
 
 function displayValue(value) {
   const normalized = String(value ?? '').trim()
@@ -103,6 +108,7 @@ function displayValue(value) {
           <ul>
             <li>工作台和个人资料始终可用</li>
             <li v-if="isAdmin">用户管理、实验室管理、设备管理和系统设置可用</li>
+            <li v-else-if="isStudent">侧边栏提供实验室预约和指定实验室设备查看</li>
             <li v-else>管理模块仅对管理员开放</li>
           </ul>
         </div>
