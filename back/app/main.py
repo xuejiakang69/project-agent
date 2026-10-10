@@ -10,11 +10,25 @@ from app.api.user import router as user_router
 from app.api.lab import router as lab_router
 from app.api.reservation import router as reservation_router
 from app.api.equipment import router as equipment_router
+from app.agent.api.chat import router as agent_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import UPLOAD_DIR
 from contextlib import asynccontextmanager
+import logging
 
+logging.basicConfig(
+     level=logging.INFO,  # 级别：DEBUG < INFO < WARNING < ERROR < CRITICAL
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
+
+logger.debug("调试信息，开发用")
+logger.info("普通信息，比如服务启动、用户登录")
+logger.warning("警告信息")
+logger.error("错误信息，比如数据库查询失败")
+logger.critical("严重错误")
 
 
 @asynccontextmanager
@@ -43,6 +57,7 @@ app.include_router(user_router,prefix="")
 app.include_router(lab_router,prefix="")
 app.include_router(equipment_router,prefix="")
 app.include_router(reservation_router,prefix="")
+app.include_router(agent_router,prefix="")
 
 #静态目录挂载
 app.mount("/uploads",StaticFiles(directory=UPLOAD_DIR),name="uploads")

@@ -9,6 +9,9 @@ class Setting(BaseSettings):
     JWT_KEY :str
     JWT_ALGORITHM:str = "HS256"
     JWT_EXPIRE : int
+    AGENT_KEY: str
+    AGENT_URL: str
+    AGENT_MODEL: str
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",env_file_encoding="utf-8"
