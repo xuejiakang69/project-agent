@@ -1,5 +1,6 @@
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.equipment import Equipment
 from app.models.lab import Lab
@@ -80,10 +81,15 @@ async def get_equipments_paginated(
     page_size: int,
     keyword: str | None,
     lab_id: int | None,
+    status: int | None = None,
 ) -> tuple[list[tuple[Equipment, str | None]], int]:
     normalized_keyword = (keyword or "").strip()
 
-    stmt = select(Equipment, Lab.name).outerjoin(Lab, Equipment.lab_id == Lab.id)
+    stmt = (
+        select(Equipment, Lab.name)
+        .outerjoin(Lab, Equipment.lab_id == Lab.id)
+        .options(selectinload(Equipment.lab))
+    )
     count_stmt = select(func.count(Equipment.id)).outerjoin(
         Lab,
         Equipment.lab_id == Lab.id,
@@ -92,6 +98,10 @@ async def get_equipments_paginated(
     if lab_id is not None:
         stmt = stmt.where(Equipment.lab_id == lab_id)
         count_stmt = count_stmt.where(Equipment.lab_id == lab_id)
+
+    if status is not None:
+        stmt = stmt.where(Equipment.status == status)
+        count_stmt = count_stmt.where(Equipment.status == status)
 
     if normalized_keyword:
         pattern = f"%{normalized_keyword}%"

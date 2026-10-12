@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import UPLOAD_DIR
 from contextlib import asynccontextmanager
+from app.agent.crud.kb import async_init_knowledge_base
 import logging
 
 logging.basicConfig(
@@ -35,6 +36,7 @@ logger.critical("严重错误")
 async def lifespan(app: FastAPI):
     # startup
     await create_tables()
+    await async_init_knowledge_base()
     yield
     # shutdown
     await engine.dispose()

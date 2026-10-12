@@ -12,5 +12,5 @@ router = APIRouter(prefix="/api/agent", tags=["智能助手"])
 async def chat(data: ChatRequest,current_user = Depends(get_current_user))-> Result[ChatMessages]:
     """与大模型进行对话"""
     content = await chat_with_model(data)
-    print("content:",content)
+
     return Result[ChatMessages](result=ChatMessages.model_validate({"role":"assistant","content":content}))

@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from fastapi import HTTPException
 from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -221,3 +221,21 @@ async def audit_reservation(
     await db.flush()
     await db.refresh(reservation)
     return to_response(reservation)
+
+
+async def get_equipment_ids_busy_at_time(
+    db: AsyncSession,
+    *,
+    date: str,
+    at_time: str,
+) -> set[int]:
+    """返回指定时间仍被待审核或已通过预约占用的设备 ID。"""
+    stmt = select(Reservation.equipment_id).where(
+        Reservation.equipment_id.is_not(None),
+        Reservation.date == date,
+        Reservation.start_time <= at_time,
+        Reservation.end_time > at_time,
+        Reservation.status.in_([0, 1]),
+    )
+    result = await db.execute(stmt)
+    return set(result.scalars().all())

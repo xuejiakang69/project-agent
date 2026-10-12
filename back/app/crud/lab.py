@@ -64,15 +64,21 @@ async def get_labs_paginated(
     page: int,
     page_size: int,
     keyword: str | None,
+    status: int | None = None,
 ) -> tuple[list[Lab], int]:
     stmt = select(Lab)
     count_stmt = select(func.count(Lab.id))
     normalized_keyword = (keyword or "").strip()
 
+    if status is not None:
+        stmt = stmt.where(Lab.status == status)
+        count_stmt = count_stmt.where(Lab.status == status)
+
     if normalized_keyword:
         pattern = f"%{normalized_keyword}%"
-        stmt = stmt.where(Lab.name.ilike(pattern))
-        count_stmt = count_stmt.where(Lab.name.ilike(pattern))
+        keyword_filter = Lab.name.ilike(pattern)
+        stmt = stmt.where(keyword_filter)
+        count_stmt = count_stmt.where(keyword_filter)
 
     total = await db.scalar(count_stmt) or 0
     result = await db.execute(
