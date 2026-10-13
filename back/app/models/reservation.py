@@ -21,7 +21,7 @@ class Reservation(Base):
     date: Mapped[str] = mapped_column(String(50), comment="预约日期", nullable=False)
     start_time: Mapped[str] = mapped_column(String(50), comment="预约开始时间", nullable=False)
     end_time: Mapped[str] = mapped_column(String(50), comment="预约结束时间", nullable=False)
-    remarks: Mapped[str | None] = mapped_column(String(255), comment="备注")
+    remark: Mapped[str | None] = mapped_column(String(255), comment="备注")
     status: Mapped[int] = mapped_column(
         Integer,
         comment="状态:0-待审核,1-已通过,2-已拒绝,3-已取消",

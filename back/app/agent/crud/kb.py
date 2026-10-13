@@ -1,192 +1,152 @@
 import asyncio
+import hashlib
+import json
 from pathlib import Path
-from threading import Lock
+from threading import RLock
+
 import chromadb
 from chromadb.api.models.Collection import Collection
 from chromadb.utils import embedding_functions
+
 from app.config import BASE_DIR
 
 
-KB_DIR = BASE_DIR / "data" / "kb" #知识库的路径
-CHROMA_DIR = BASE_DIR / "data" / "chroma" #chromadb 本地化路径
+KB_DIR = BASE_DIR / "data" / "kb"
+CHROMA_DIR = BASE_DIR / "data" / "chroma"
+MANIFEST_PATH = CHROMA_DIR / "kb_manifest.json"
 
-COLLECTION_NAME = "lab_kb" #名称
-CHUNK_SIZE = 500 #以500字符分割
-CHUNK_OVERLAP = 80 #重复内容
-TOP_K = 5 #取5条
-
-
-_collection:Collection | None = None #当前对象没有集合对象
-_init_lock = Lock() #让同一进程的初始化依次执行减少竞争
+_collection: Collection | None = None
+_embedding_fn = None
+_lock = RLock()
 
 
-#默认是英文检索  切换成中文的
-_embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="BAAI/bge-small-zh-v1.5"
-)
+def get_collection() -> Collection:
+    global _collection, _embedding_fn
 
-
-def split_text(text:str,chunk_size:int=CHUNK_SIZE,overlap:int=CHUNK_OVERLAP):
-    #按照锻炼切分文本，并保留一定的段落
-    text = text.strip()
-    if not text:
-        return []
-
-    #先按空行切分，尽量抱愧原有段落
-    paragraphs = [
-        paragraph.strip()
-        for paragraph in text.split("\n\n")
-        if paragraph.strip()
-    ]
-
-    chunks:list[str] = []
-    current = ""
-
-    for paragraph in paragraphs:
-        #超长段落再按字符长度七日分
-        if len(paragraph) > chunk_size:
-            if current:
-                chunks.append(current)
-                current=""
-
-            start = 0
-            while start < len(paragraph):
-                end = start+chunk_size
-                chunks.append(paragraph[start:end])
-
-                if end >= len(paragraph):
-                    break
-
-                start = end - overlap
-            continue
-        candidate = (
-            f"{current}\n\n{paragraph}"
-            if current
-            else paragraph
+    if _collection is None:
+        _embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name="BAAI/bge-small-zh-v1.5"
         )
-
-        if len(candidate) <= chunk_size:
-            current = candidate
-        else:
-            chunks.append(current)
-            current = current[-overlap:]+"\n\n"+paragraph
-    if current:
-        chunks.append(current)
-
-    return chunks
-
-
-def get_collection():
-    """获取持久化的"""
-    global _collection
-
-    if _collection is not None:
-        return _collection
-
-    with _init_lock:
-        if _collection is not None:
-            return _collection
-
-        KB_DIR.mkdir(parents=True,exist_ok=True)
-        CHROMA_DIR.mkdir(parents=True,exist_ok=True)
-
-        client = chromadb.PersistentClient(
-            path = str(CHROMA_DIR)
-        )
-
-        collection = client.get_or_create_collection(
-            name = COLLECTION_NAME,
+        CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+        client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+        _collection = client.get_or_create_collection(
+            name="lab_kb",
             embedding_function=_embedding_fn,
-            metadata={"hnsw:space":"cosine"}
+            metadata={"hnsw:space": "cosine"},
         )
-        sync_konwledge_base(collection)
 
-        _collection = collection
-
-        return _collection
+    return _collection
 
 
-def sync_konwledge_base(collection:Collection):
-    """同步markdown文档，新增或更新对应的chunk"""
+def _load_documents() -> dict[str, dict]:
+    KB_DIR.mkdir(parents=True, exist_ok=True)
+    documents = {}
+
     for path in sorted(KB_DIR.glob("*.md")):
         text = path.read_text(encoding="utf-8").strip()
-        chunks = split_text(text)
+        documents[path.name] = {
+            "hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            "chunks": [
+                part.strip()
+                for part in text.split("\n\n")
+                if part.strip()
+            ],
+        }
 
-        if not text:
-            continue
+    return documents
 
-        ids = [
-            f"{path.stem}_{index}"
-            for index in range(len(chunks))
-        ]
 
-        metadatas = [
-            {
-                "source":path.name,
-                "chunk_index":index,
-            }
-            for index in range(len(chunks))
-        ]
+def _load_hashes() -> dict:
+    try:
+        return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
 
-        collection.upsert(
-            ids=ids,
-            documents=chunks,
-            metadatas=metadatas
-        )
 
-def search(query:str):
-    """检索用户问题"""
+def _save_hashes(documents: dict[str, dict]) -> None:
+    CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+    hashes = {
+        name: item["hash"]
+        for name, item in documents.items()
+    }
+    MANIFEST_PATH.write_text(
+        json.dumps(hashes, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def sync_if_changed() -> bool:
+    """资料未变化时跳过 Embedding 和向量更新。"""
+    with _lock:
+        documents = _load_documents()
+        old_hashes = _load_hashes()
+
+        changed = []
+        for name, item in documents.items():
+            old_hash = old_hashes.get(name)
+            if isinstance(old_hash, dict):
+                old_hash = old_hash.get("hash")
+            if old_hash != item["hash"]:
+                changed.append(name)
+
+        removed = set(old_hashes) - set(documents)
+        if not changed and not removed:
+            return False
+
+        collection = get_collection()
+        for source in set(changed) | removed:
+            collection.delete(where={"source": source})
+
+        for source in changed:
+            chunks = documents[source]["chunks"]
+            if not chunks:
+                continue
+
+            collection.upsert(
+                ids=[f"{Path(source).stem}_{i}" for i in range(len(chunks))],
+                documents=chunks,
+                metadatas=[
+                    {"source": source, "chunk_index": i}
+                    for i in range(len(chunks))
+                ],
+            )
+
+        _save_hashes(documents)
+        return True
+
+
+def search(query: str) -> str:
     query = query.strip()
     if not query:
         return ""
-    collection =  get_collection()
+
+    sync_if_changed()
+    collection = get_collection()
     if collection.count() == 0:
         return ""
+
     result = collection.query(
-        query_texts = [query],
-        n_results = min(TOP_K,collection.count()),
-        include=["documents","metadatas","distances"]
+        query_texts=[query],
+        n_results=min(5, collection.count()),
+        include=["documents", "metadatas", "distances"],
     )
 
-    documents = (result.get("documents") or [[]])[0]
-    metadatas = (result.get("metadatas") or [[]])[0]
-    distances = (result.get("distances") or [[]])[0]
-
-    results= []
-
-    for document,metadata,distance in zip(documents,metadatas,distances):
-
-        if document is None or distance is None:
-            continue
-
-        results.append(
-            {
-                "distance":distance,
-                "content":(
-                    f"[{metadata.get('source','')}]\n"
-                    f"{document}"
-                )
-            }
+    rows = [
+        (distance, f"[{(metadata or {}).get('source', '')}]\n{document}")
+        for document, metadata, distance in zip(
+            result["documents"][0],
+            result["metadatas"][0],
+            result["distances"][0],
         )
-    results.sort(key=lambda item: item["distance"])
-
-    #返回top2
-    final_parts = [
-        item["content"]
-        for item in results[:2]
+        if document is not None
     ]
-
-    return "\n\n".join(final_parts)
+    rows.sort(key=lambda item: item[0])
+    return "\n\n".join(content for _, content in rows[:2])
 
 
 async def async_search(query: str) -> str:
-    """在线程池中执行同步检索，避免阻塞事件循环。"""
-
     return await asyncio.to_thread(search, query)
 
 
-
 async def async_init_knowledge_base() -> None:
-    """供 FastAPI 启动阶段调用，提前初始化知识库。"""
-
-    await asyncio.to_thread(get_collection)
+    await asyncio.to_thread(sync_if_changed)

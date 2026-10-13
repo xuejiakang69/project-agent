@@ -32,6 +32,12 @@ const router = createRouter({
           meta: { title: '工作台', requiresAuth: true },
         },
         {
+          path: 'chat',
+          name: 'chat',
+          component: () => import('@/views/ChatView.vue'),
+          meta: { title: '智能助手', requiresAuth: true },
+        },
+        {
           path: 'users',
           name: 'users',
           component: () => import('@/views/UsersView.vue'),

@@ -31,7 +31,7 @@ def to_response(model: Reservation) -> ReservationRequest:
         date=model.date,
         start_time=model.start_time,
         end_time=model.end_time,
-        remark=model.remarks,
+        remark=model.remark,
         status=model.status,
         create_time=model.create_time,
         updated_time=model.updated_time,
@@ -130,7 +130,7 @@ async def create_reservation(
         date=data.date,
         start_time=data.start_time,
         end_time=data.end_time,
-        remarks=data.remark,
+        remark=data.remark,
         status=0,
     )
     db.add(model)
@@ -165,7 +165,7 @@ async def get_reservations_by_user(
         keyword_filter = or_(
             User.name.ilike(f"%{keyword}%"),
             User.username.ilike(f"%{keyword}%"),
-            Reservation.remarks.ilike(f"%{keyword}%"),
+            Reservation.remark.ilike(f"%{keyword}%"),
         )
         stmt = stmt.outerjoin(Reservation.user).where(keyword_filter)
         count_stmt = count_stmt.outerjoin(Reservation.user).where(keyword_filter)
@@ -221,21 +221,3 @@ async def audit_reservation(
     await db.flush()
     await db.refresh(reservation)
     return to_response(reservation)
-
-
-async def get_equipment_ids_busy_at_time(
-    db: AsyncSession,
-    *,
-    date: str,
-    at_time: str,
-) -> set[int]:
-    """返回指定时间仍被待审核或已通过预约占用的设备 ID。"""
-    stmt = select(Reservation.equipment_id).where(
-        Reservation.equipment_id.is_not(None),
-        Reservation.date == date,
-        Reservation.start_time <= at_time,
-        Reservation.end_time > at_time,
-        Reservation.status.in_([0, 1]),
-    )
-    result = await db.execute(stmt)
-    return set(result.scalars().all())

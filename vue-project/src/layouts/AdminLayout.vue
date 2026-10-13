@@ -10,6 +10,7 @@ import {
   OfficeBuilding,
   SwitchButton,
   Calendar,
+  ChatDotRound,
   Cpu,
   Upload,
   User,
@@ -197,6 +198,10 @@ function handleCommand(command) {
           <el-menu-item index="/home">
             <el-icon><Location /></el-icon>
             <template #title>工作台</template>
+          </el-menu-item>
+          <el-menu-item index="/home/chat">
+            <el-icon><ChatDotRound /></el-icon>
+            <template #title>智能助手</template>
           </el-menu-item>
           <template v-if="isStudent">
             <el-menu-item index="/home/student/labs">
