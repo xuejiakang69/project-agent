@@ -147,6 +147,7 @@ async def get_reservations_by_user(
     page_size: int = 10,
     status: int | None = None,
     keyword: str | None = None,
+    allowed_statuses: list[int] | None = None,
 ):
     """获取预约列表，普通用户查看自己的预约，管理员查看全部预约"""
 
@@ -160,6 +161,10 @@ async def get_reservations_by_user(
     if status is not None:
         stmt = stmt.where(Reservation.status == status)
         count_stmt = count_stmt.where(Reservation.status == status)
+
+    if allowed_statuses is not None:
+        stmt = stmt.where(Reservation.status.in_(allowed_statuses))
+        count_stmt = count_stmt.where(Reservation.status.in_(allowed_statuses))
 
     if keyword:
         keyword_filter = or_(

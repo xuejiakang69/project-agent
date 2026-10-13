@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <section class="chat-page">
     <div class="chat-shell">
       <header class="chat-header">
@@ -54,11 +54,30 @@
                 <span class="message-role">
                   {{ message.role === 'user' ? '我' : '智能助手' }}
                 </span>
-                <div class="message-bubble">{{ message.content }}</div>
+                <div
+                  class="message-bubble"
+                  :class="{ 'message-bubble--loading': message.streaming && !message.content }"
+                >
+                  <template v-if="message.streaming && !message.content">
+                    <span />
+                    <span />
+                    <span />
+                  </template>
+                  <template v-else>
+                    <div
+                      v-if="message.role === 'assistant'"
+                      class="message-markdown"
+                      v-html="renderMarkdown(message.content)"
+                    />
+                    <div v-else class="message-text">
+                      {{ message.content }}
+                    </div>
+                  </template>
+                </div>
               </div>
             </div>
 
-            <div v-if="sending" class="message-row message-row--assistant">
+            <div v-if="sending && !hasStreamingMessage" class="message-row message-row--assistant">
               <div class="message-avatar message-avatar--assistant">
                 <el-icon><Monitor /></el-icon>
               </div>
@@ -125,7 +144,8 @@ import {
   WarningFilled,
 } from '@element-plus/icons-vue'
 
-import { sendChat } from '@/api/chat'
+import { sendChatStream } from '@/api/chat'
+import { renderMarkdown } from '@/utils/markdown'
 
 const messages = ref([])
 const draft = ref('')
@@ -134,6 +154,9 @@ const errorMessage = ref('')
 const messagesPanel = ref(null)
 
 const canSend = computed(() => !sending.value && draft.value.trim().length > 0)
+const hasStreamingMessage = computed(() =>
+  messages.value.some((message) => message.streaming),
+)
 
 async function scrollToBottom() {
   await nextTick()
@@ -148,13 +171,42 @@ async function requestReply() {
 
   sending.value = true
   errorMessage.value = ''
+
+  const assistantIndex = messages.value.length
+  messages.value.push({
+    role: 'assistant',
+    content: '',
+    streaming: true,
+  })
   await scrollToBottom()
 
   try {
-    const reply = await sendChat(messages.value)
-    messages.value.push(reply)
+    await sendChatStream(messages.value, {
+      onEvent: async (event) => {
+        const reply = messages.value[assistantIndex]
+        if (!reply) return
+
+        if (event.type === 'token') {
+          reply.content += String(event.data?.content ?? '')
+          await scrollToBottom()
+          return
+        }
+
+        if (event.type === 'done') {
+          reply.content = String(event.data?.content ?? reply.content)
+          reply.streaming = false
+          await scrollToBottom()
+        }
+      },
+    })
+
+    const reply = messages.value[assistantIndex]
+    if (reply) {
+      reply.streaming = false
+    }
   } catch (error) {
-    errorMessage.value = error?.message || '智能助手请求失败，请稍后重试'
+    messages.value.splice(assistantIndex, 1)
+    errorMessage.value = error?.message || '\u667a\u80fd\u52a9\u624b\u8bf7\u6c42\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5'
   } finally {
     sending.value = false
     await scrollToBottom()
@@ -399,9 +451,134 @@ function handleKeydown(event) {
   font-size: 14px;
   line-height: 1.75;
   overflow-wrap: anywhere;
+}
+
+.message-text {
   white-space: pre-wrap;
 }
 
+.message-markdown {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.message-markdown :deep(> :first-child) {
+  margin-top: 0;
+}
+
+.message-markdown :deep(> :last-child) {
+  margin-bottom: 0;
+}
+
+.message-markdown :deep(h1),
+.message-markdown :deep(h2),
+.message-markdown :deep(h3),
+.message-markdown :deep(h4) {
+  margin: 18px 0 8px;
+  color: var(--app-text);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.message-markdown :deep(h1) {
+  font-size: 20px;
+}
+
+.message-markdown :deep(h2) {
+  font-size: 18px;
+}
+
+.message-markdown :deep(h3),
+.message-markdown :deep(h4) {
+  font-size: 16px;
+}
+
+.message-markdown :deep(p),
+.message-markdown :deep(ul),
+.message-markdown :deep(ol),
+.message-markdown :deep(blockquote),
+.message-markdown :deep(pre) {
+  margin: 8px 0;
+}
+
+.message-markdown :deep(ul),
+.message-markdown :deep(ol) {
+  padding-left: 22px;
+}
+
+.message-markdown :deep(li + li) {
+  margin-top: 4px;
+}
+
+.message-markdown :deep(a) {
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.message-markdown :deep(blockquote) {
+  padding: 6px 12px;
+  border-left: 3px solid #94a3b8;
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.message-markdown :deep(code) {
+  padding: 2px 5px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  color: #0f766e;
+  background: #f1f5f9;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+
+.message-markdown :deep(pre) {
+  max-width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #dbe3ec;
+  border-radius: 6px;
+  color: #e2e8f0;
+  background: #172033;
+  overflow-x: auto;
+}
+
+.message-markdown :deep(pre code) {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.message-markdown :deep(table) {
+  display: block;
+  max-width: 100%;
+  margin: 10px 0;
+  border-collapse: collapse;
+  overflow-x: auto;
+}
+
+.message-markdown :deep(th),
+.message-markdown :deep(td) {
+  padding: 7px 10px;
+  border: 1px solid #dbe3ec;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.message-markdown :deep(th) {
+  color: #334155;
+  background: #f1f5f9;
+  font-weight: 650;
+}
+
+.message-markdown :deep(hr) {
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--app-border);
+}
 .message-row--user .message-bubble {
   border-color: #2563eb;
   color: #ffffff;
