@@ -1,15 +1,20 @@
+@'
 # Python
 **/__pycache__/
 *.py[cod]
 back/venv/
 back/.env
 back/uploads/
-.vscode/
 
 # Frontend
 vue-project/node_modules/
 vue-project/dist/
 
 # IDE
-vue-project/.vscode/
-vue-project/.idea/
+.vscode/
+**/.vscode/
+**/.idea/
+
+# Runtime data
+back/data/chroma/
+'@ | Set-Content -Path .gitignore -Encoding utf8

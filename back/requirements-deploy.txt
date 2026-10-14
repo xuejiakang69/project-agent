@@ -1,0 +1,15 @@
+fastapi==0.141.1
+uvicorn==0.54.0
+SQLAlchemy==2.1.1
+asyncmy==0.2.15
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+python-multipart==0.0.32
+PyJWT==2.15.1
+pwdlib==0.3.1
+langchain-core==1.6.9
+langchain-openai==1.7.0
+langgraph==1.2.14
+chromadb==1.5.9
+sentence-transformers==6.1.0
