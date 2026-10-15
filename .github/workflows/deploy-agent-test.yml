@@ -34,7 +34,7 @@ jobs:
       - name: Install Vue dependencies
         working-directory: vue-project
         run: |
-          npm ci --registry=https://registry.npmjs.org/
+          npm ci --include=optional --registry=https://registry.npmjs.org/
 
       - name: Verify Rolldown native binding
         working-directory: vue-project
