@@ -1,4 +1,4 @@
-﻿name: Deploy Agent Test
+name: Deploy Agent Test
 
 on:
   push:
@@ -63,12 +63,12 @@ jobs:
             --exclude='back/.git' \
             -czf "$RUNNER_TEMP/backend.tar.gz" back
 
-          tar -tzf "$RUNNER_TEMP/backend.tar.gz" | head -40
+          tar -tzf "$RUNNER_TEMP/backend.tar.gz" | awk 'NR <= 40'
 
       - name: Package frontend
         run: |
           tar -czf "$RUNNER_TEMP/frontend.tar.gz" -C vue-project dist
-          tar -tzf "$RUNNER_TEMP/frontend.tar.gz" | head -20
+          tar -tzf "$RUNNER_TEMP/frontend.tar.gz" | awk 'NR <= 20'
 
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.9.0
