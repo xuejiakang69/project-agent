@@ -10,7 +10,8 @@ from chromadb.utils import embedding_functions
 
 from app.config import BASE_DIR
 
-
+# 本地 BGE 模型目录
+MODEL_PATH = Path("/www/wwwroot/fastapi/fastapi-test/model-cache/bge-small-zh-v1.5")
 KB_DIR = BASE_DIR / "data" / "kb"
 CHROMA_DIR = BASE_DIR / "data" / "chroma"
 MANIFEST_PATH = CHROMA_DIR / "kb_manifest.json"
@@ -25,7 +26,10 @@ def get_collection() -> Collection:
 
     if _collection is None:
         _embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name="BAAI/bge-small-zh-v1.5"
+            model_name=str(MODEL_PATH),
+            device="cpu",
+            normalize_embeddings=True,
+            local_files_only=True,
         )
         CHROMA_DIR.mkdir(parents=True, exist_ok=True)
         client = chromadb.PersistentClient(path=str(CHROMA_DIR))
@@ -46,11 +50,7 @@ def _load_documents() -> dict[str, dict]:
         text = path.read_text(encoding="utf-8").strip()
         documents[path.name] = {
             "hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
-            "chunks": [
-                part.strip()
-                for part in text.split("\n\n")
-                if part.strip()
-            ],
+            "chunks": [part.strip() for part in text.split("\n\n") if part.strip()],
         }
 
     return documents
@@ -65,10 +65,7 @@ def _load_hashes() -> dict:
 
 def _save_hashes(documents: dict[str, dict]) -> None:
     CHROMA_DIR.mkdir(parents=True, exist_ok=True)
-    hashes = {
-        name: item["hash"]
-        for name, item in documents.items()
-    }
+    hashes = {name: item["hash"] for name, item in documents.items()}
     MANIFEST_PATH.write_text(
         json.dumps(hashes, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -106,8 +103,7 @@ def sync_if_changed() -> bool:
                 ids=[f"{Path(source).stem}_{i}" for i in range(len(chunks))],
                 documents=chunks,
                 metadatas=[
-                    {"source": source, "chunk_index": i}
-                    for i in range(len(chunks))
+                    {"source": source, "chunk_index": i} for i in range(len(chunks))
                 ],
             )
 

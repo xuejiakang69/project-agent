@@ -1,0 +1,119 @@
+﻿name: Deploy Agent Test
+
+on:
+  push:
+    branches:
+      - agent_lad
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-agent-test
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: vue-project/package-lock.json
+
+      - name: Build Vue frontend
+        working-directory: vue-project
+        env:
+          VITE_API_BASE_URL: https://api-test.online3.me/api
+        run: |
+          npm ci
+          npm run build
+          test -f dist/index.html
+
+      - name: Check backend files
+        run: |
+          test -f back/app/main.py
+          test -f back/app/config.py
+          test -f back/requirements-deploy.txt
+          python3 -m compileall -q back/app
+
+      - name: Package backend
+        run: |
+          tar \
+            --exclude='back/.env' \
+            --exclude='back/.env*' \
+            --exclude='back/**/.env*' \
+            --exclude='back/venv' \
+            --exclude='back/.venv' \
+            --exclude='back/__pycache__' \
+            --exclude='back/**/__pycache__' \
+            --exclude='back/data/chroma' \
+            --exclude='back/data/uploads' \
+            --exclude='back/uploads' \
+            --exclude='back/model-cache' \
+            --exclude='back/.pytest_cache' \
+            --exclude='back/.git' \
+            -czf "$RUNNER_TEMP/backend.tar.gz" back
+
+          tar -tzf "$RUNNER_TEMP/backend.tar.gz" | head -40
+
+      - name: Package frontend
+        run: |
+          tar -czf "$RUNNER_TEMP/frontend.tar.gz" -C vue-project dist
+          tar -tzf "$RUNNER_TEMP/frontend.tar.gz" | head -20
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Configure known hosts
+        env:
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+
+      - name: Upload release files
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+
+          RELEASE_ID="$GITHUB_SHA"
+          REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
+          STAGING="/home/deploy/deploy-staging"
+
+          ssh -p "$DEPLOY_PORT" "$REMOTE" \
+            "test -d '$STAGING' && test -w '$STAGING'"
+
+          printf '%s\n' "$RELEASE_ID" > "$RUNNER_TEMP/release_id"
+
+          scp -P "$DEPLOY_PORT" \
+            "$RUNNER_TEMP/release_id" \
+            "$RUNNER_TEMP/backend.tar.gz" \
+            "$RUNNER_TEMP/frontend.tar.gz" \
+            "$REMOTE:$STAGING/"
+
+      - name: Deploy and verify
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+        run: |
+          set -euo pipefail
+          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            'sudo -n /usr/local/sbin/deploy-fastapi-test'
