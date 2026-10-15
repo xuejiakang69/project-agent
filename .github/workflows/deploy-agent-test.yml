@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
@@ -111,17 +111,24 @@ jobs:
           REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
           STAGING="/home/deploy/deploy-staging"
 
-          ssh -p "$DEPLOY_PORT" "$REMOTE" \
+          ssh \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -p "$DEPLOY_PORT" "$REMOTE" \
             "test -d '$STAGING' && test -w '$STAGING'"
 
           printf '%s\n' "$RELEASE_ID" > "$RUNNER_TEMP/release_id"
 
-          scp -P "$DEPLOY_PORT" \
+          scp \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -P "$DEPLOY_PORT" \
             "$RUNNER_TEMP/release_id" \
             "$RUNNER_TEMP/backend.tar.gz" \
             "$RUNNER_TEMP/frontend.tar.gz" \
             "$REMOTE:$STAGING/"
 
+      
       - name: Deploy and verify
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -129,5 +136,10 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
           set -euo pipefail
-          ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+          ssh \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -p "$DEPLOY_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
             'sudo -n /usr/local/sbin/deploy-fastapi-test'
+
