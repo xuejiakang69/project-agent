@@ -25,19 +25,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.22.2"
           registry-url: https://registry.npmjs.org/
           cache: npm
           cache-dependency-path: vue-project/package-lock.json
+
+      
+      - name: Install Vue dependencies
+        working-directory: vue-project
+        run: |
+          npm ci --registry=https://registry.npmjs.org/
+
+      - name: Verify Rolldown native binding
+        working-directory: vue-project
+        run: |
+          node --version
+          npm --version
+          npm ls @rolldown/binding-linux-x64-gnu
 
       - name: Build Vue frontend
         working-directory: vue-project
         env:
           VITE_API_BASE_URL: https://api-test.online3.me/api
         run: |
-          npm ci --registry=https://registry.npmjs.org/
           npm run build
           test -f dist/index.html
+
 
       - name: Check backend files
         run: |
