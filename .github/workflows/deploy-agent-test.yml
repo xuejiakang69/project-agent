@@ -26,6 +26,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          registry-url: https://registry.npmjs.org/
           cache: npm
           cache-dependency-path: vue-project/package-lock.json
 
@@ -34,7 +35,7 @@ jobs:
         env:
           VITE_API_BASE_URL: https://api-test.online3.me/api
         run: |
-          npm ci
+          npm ci --registry=https://registry.npmjs.org/
           npm run build
           test -f dist/index.html
 
