@@ -1,4 +1,4 @@
-name: Deploy Agent Test
+﻿name: Build and Upload Agent Test
 
 on:
   push:
@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build-and-upload:
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -30,7 +30,6 @@ jobs:
           cache: npm
           cache-dependency-path: vue-project/package-lock.json
 
-      
       - name: Install Vue dependencies
         working-directory: vue-project
         run: |
@@ -51,11 +50,11 @@ jobs:
           npm run build
           test -f dist/index.html
 
-
       - name: Check backend files
         run: |
           test -f back/app/main.py
           test -f back/app/config.py
+          test -f back/app/agent/crud/kb.py
           test -f back/requirements-deploy.txt
           python3 -m compileall -q back/app
 
@@ -78,6 +77,20 @@ jobs:
             -czf "$RUNNER_TEMP/backend.tar.gz" back
 
           tar -tzf "$RUNNER_TEMP/backend.tar.gz" | awk 'NR <= 40'
+
+          tar -xOf "$RUNNER_TEMP/backend.tar.gz" \
+            back/app/agent/crud/kb.py > "$RUNNER_TEMP/kb.py"
+
+          grep -Fq 'import pysqlite3' "$RUNNER_TEMP/kb.py"
+          grep -Fq 'sys.modules["sqlite3"] = pysqlite3' "$RUNNER_TEMP/kb.py"
+          echo "SQLite compatibility code check passed."
+
+          tar -xOf "$RUNNER_TEMP/backend.tar.gz" \
+            back/requirements-deploy.txt > "$RUNNER_TEMP/requirements-deploy.txt"
+
+          grep -Fxq 'pysqlite3-binary==0.5.4' \
+            "$RUNNER_TEMP/requirements-deploy.txt"
+          echo "SQLite compatibility dependency check passed."
 
       - name: Package frontend
         run: |
@@ -127,19 +140,3 @@ jobs:
             "$RUNNER_TEMP/backend.tar.gz" \
             "$RUNNER_TEMP/frontend.tar.gz" \
             "$REMOTE:$STAGING/"
-
-      
-      - name: Deploy and verify
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-        run: |
-          set -euo pipefail
-          ssh \
-            -o ServerAliveInterval=30 \
-            -o ServerAliveCountMax=6 \
-            -p "$DEPLOY_PORT" \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            'sudo -n /usr/local/sbin/deploy-fastapi-test'
-

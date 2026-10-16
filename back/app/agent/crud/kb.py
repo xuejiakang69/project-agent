@@ -1,8 +1,12 @@
 import asyncio
 import hashlib
 import json
+import sys
 from pathlib import Path
 from threading import RLock
+
+import pysqlite3
+sys.modules["sqlite3"] = pysqlite3
 
 import chromadb
 from chromadb.api.models.Collection import Collection
