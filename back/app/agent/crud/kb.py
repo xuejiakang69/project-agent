@@ -5,8 +5,12 @@ import sys
 from pathlib import Path
 from threading import RLock
 
-import pysqlite3
-sys.modules["sqlite3"] = pysqlite3
+try:
+    import pysqlite3
+    sys.modules["sqlite3"] = pysqlite3
+except ImportError:
+    # Windows 上没有 pysqlite3-binary，直接用系统自带的 sqlite3
+    pass
 
 import chromadb
 from chromadb.api.models.Collection import Collection

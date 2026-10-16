@@ -263,7 +263,7 @@ function handleKeydown(event) {
 
 .chat-shell {
   display: flex;
-  width: min(1120px, 100%);
+  width: 100%;
   height: 100%;
   min-height: 0;
   margin: 0 auto;
