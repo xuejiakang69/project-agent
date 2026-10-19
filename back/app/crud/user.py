@@ -27,6 +27,7 @@ async def add_user(data: CreateResult, db: AsyncSession):
         email=data.email,
         name=data.name,
         phone=data.phone,
+        status=3
     )
     db.add(user)
     await db.flush()

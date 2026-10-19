@@ -115,7 +115,7 @@ export async function login({ username, password, remember = true } = {}) {
 export async function register(payload = {}) {
   try {
     const response = await axios.post(
-      `${API_BASE_URL}/auth/register`,
+      `${API_BASE_URL}/user/register`,
       {
         name: String(payload.displayName ?? payload.name ?? '').trim(),
         email: String(payload.email ?? '').trim(),

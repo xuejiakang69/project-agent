@@ -15,4 +15,4 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(50), comment="邮箱")
     phone: Mapped[str | None] = mapped_column(String(50), comment="手机号")
     avatar: Mapped[str | None] = mapped_column(String(50), comment="头像")
-    status: Mapped[int] = mapped_column(default=1, comment="状态:0-禁用,1-正常")
+    status: Mapped[int] = mapped_column(default=1, comment="状态:0-禁用,1-正常,3-审批中")

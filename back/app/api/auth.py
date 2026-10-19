@@ -16,8 +16,10 @@ async def login(data:LoginRequest,db:AsyncSession=Depends(get_db))->Result[Login
     user = await get_user_by_password(data,db)
     if not user:
         raise HTTPException(status_code=400,detail="用户名或密码错误")
-    if user.status!= 1:
+    if user.status== 0:
         raise HTTPException(status_code=401,detail="账号已停用")
+    if user.status== 3:
+        raise HTTPException(status_code=401,detail="账号审核中请稍后再试")
     token = create_jwt_token(data={"sub":user.username,"user_id":user.id})
     return Result[LoginResult](result=LoginResult(data=UserRequest.model_validate(user),token=token))
 
