@@ -235,6 +235,30 @@ export async function listUsers({ page = 1, pageSize = 20, keyword = '' } = {}) 
   }
 }
 
+export async function updateUserStatus({ id, status } = {}) {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/user/status`,
+      {
+        id: Number(id),
+        status: Number(status),
+      },
+      protectedRequestConfig(),
+    )
+
+    const result = response.data
+    const updatedUser = result?.result
+
+    if (result?.code !== 0 || !updatedUser) {
+      throw new Error(result?.message || '用户状态响应格式不正确')
+    }
+
+    return normalizeUser(updatedUser)
+  } catch (error) {
+    throw new Error(getErrorMessage(error, '用户状态更新失败，请稍后重试'))
+  }
+}
+
 export function readToken() {
   return (
     window.localStorage.getItem(TOKEN_KEY) ||

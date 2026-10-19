@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud.auth import add_user
-from app.crud.user import get_users_paginated, update_user
+from app.crud.user import get_users_paginated, update_user, update_user_status, get_user_by_id,add_user
 from app.database import get_db
 from app.models.user import User
 from app.schemas.auth import CreateResult
 from app.schemas.common import Result
-from app.schemas.user import UserAllResult, UserRequest, UserUpdateRequest
+from app.schemas.user import UserAllResult, UserRequest, UserStatusUpdateRequest, UserUpdateRequest
 from app.utils.auth import get_current_user,get_user_by_main
 
 
@@ -36,6 +35,26 @@ async def update_user_profile(
 ) -> Result[UserRequest]:
     user = await update_user(current_user, data, db)
 
+    return Result[UserRequest](
+        result=UserRequest.model_validate(user)
+    )
+
+
+@router.post("/status")
+async def change_user_status(
+    data: UserStatusUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_user_by_main),
+) -> Result[UserRequest]:
+    user = await get_user_by_id(data.id, db)
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    allowed_transitions = {(3, 1), (1, 0)}
+    if (user.status, data.status) not in allowed_transitions:
+        raise HTTPException(status_code=400, detail="当前状态不允许该操作")
+
+    user = await update_user_status(user, data.status, db)
     return Result[UserRequest](
         result=UserRequest.model_validate(user)
     )

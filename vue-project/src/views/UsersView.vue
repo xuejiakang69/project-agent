@@ -1,8 +1,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, RefreshLeft, Search } from '@element-plus/icons-vue'
-import { listUsers } from '@/api/auth'
+import { listUsers, updateUserStatus } from '@/api/auth'
 
 const users = ref([])
 const total = ref(0)
@@ -12,6 +12,7 @@ const pageSize = ref(20)
 const keyword = ref('')
 const appliedKeyword = ref('')
 const loading = ref(false)
+const updatingUserId = ref(null)
 let requestSequence = 0
 
 async function fetchUsers() {
@@ -75,11 +76,49 @@ function roleTagType(role) {
 }
 
 function statusLabel(status) {
-  return status === 1 ? '正常' : '禁用'
+  if (status === 3) return '待审核'
+  if (status === 1) return '正常'
+  if (status === 0) return '已注销'
+  return '未知'
 }
 
 function statusTagType(status) {
-  return status === 1 ? 'success' : 'info'
+  if (status === 3) return 'warning'
+  if (status === 1) return 'success'
+  if (status === 0) return 'danger'
+  return 'info'
+}
+
+async function changeUserStatus(row, status, action) {
+  if (updatingUserId.value !== null) return
+
+  const username = row.displayName || row.name || row.username
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要${action}用户“${username}”吗？`,
+      '操作确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+      },
+    )
+  } catch {
+    return
+  }
+
+  updatingUserId.value = row.id
+
+  try {
+    await updateUserStatus({ id: row.id, status })
+    await fetchUsers()
+    ElMessage.success(`${action}成功`)
+  } catch (error) {
+    ElMessage.error(error.message || `${action}失败，请稍后重试`)
+  } finally {
+    updatingUserId.value = null
+  }
 }
 
 onMounted(fetchUsers)
@@ -164,6 +203,31 @@ onMounted(fetchUsers)
             <el-tag :type="statusTagType(row.status)" effect="light">
               {{ statusLabel(row.status) }}
             </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.status === 3"
+              type="primary"
+              link
+              :loading="updatingUserId === row.id"
+              :disabled="updatingUserId !== null && updatingUserId !== row.id"
+              @click="changeUserStatus(row, 1, '通过审核')"
+            >
+              通过审核
+            </el-button>
+            <el-button
+              v-else-if="row.status === 1"
+              type="danger"
+              link
+              :loading="updatingUserId === row.id"
+              :disabled="updatingUserId !== null && updatingUserId !== row.id"
+              @click="changeUserStatus(row, 0, '注销')"
+            >
+              注销
+            </el-button>
+            <span v-else class="status-action-empty">--</span>
           </template>
         </el-table-column>
       </el-table>

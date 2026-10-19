@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 #用户的信息
@@ -19,6 +21,11 @@ class UserUpdateRequest(BaseModel):
     email: str | None = None
     phone: str | None = None
     avatar: str | None = None
+
+
+class UserStatusUpdateRequest(BaseModel):
+    id: int
+    status: Literal[0, 1]
 
 
 class LoginResult(BaseModel):

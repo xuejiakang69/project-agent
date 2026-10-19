@@ -50,6 +50,22 @@ async def update_user(
     return current_user
 
 
+async def get_user_by_id(user_id: int, db: AsyncSession) -> User | None:
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def update_user_status(
+    user: User,
+    status: int,
+    db: AsyncSession,
+) -> User:
+    user.status = status
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
 
 #查看所有用户 （只有管理员才有权限）
 async def get_users_paginated(
