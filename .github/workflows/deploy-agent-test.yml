@@ -290,7 +290,7 @@ jobs:
           echo "注意：本步骤只上传和校验，不执行应用部署。"
           REMOTE
 
-      - name: Deploy backend and retain recent releases
+      - name: Deploy backend with release history
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
@@ -309,18 +309,18 @@ jobs:
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=6 \
             -p "$DEPLOY_PORT" "$REMOTE" \
-            bash -s -- "$READY" "$TARGET_BASE" "$STAGING" "$RELEASE_ID" "${BACKEND_RESTART_CMD:-}" <<'REMOTE'
+            bash -s -- "$READY" "$TARGET_BASE" "$RELEASE_ID" "${BACKEND_RESTART_CMD:-}" <<'REMOTE'
           set -euo pipefail
 
           READY="$1"
           TARGET_BASE="$2"
-          STAGING="$3"
-          RELEASE_ID="$4"
-          RESTART_CMD="${5:-}"
+          RELEASE_ID="$3"
+          RESTART_CMD="${4:-}"
 
           RELEASES_ROOT="$TARGET_BASE/releases"
           RELEASE_DIR="$RELEASES_ROOT/$RELEASE_ID"
-          CURRENT_BACK="$TARGET_BASE/current/back"
+          CURRENT_ROOT="$TARGET_BASE/current"
+          CURRENT_BACK="$CURRENT_ROOT/back"
           TEMP_DIR="$RELEASES_ROOT/.${RELEASE_ID}.tmp.$$"
 
           test -f "$READY/backend.tar.gz"
@@ -336,7 +336,11 @@ jobs:
           rm -rf -- "$RELEASE_DIR"
           mv -- "$TEMP_DIR" "$RELEASE_DIR"
 
-          mkdir -p "$TARGET_BASE/current"
+          if [[ -L "$CURRENT_ROOT" ]]; then
+              rm -f -- "$CURRENT_ROOT"
+          fi
+
+          mkdir -p "$CURRENT_ROOT"
           rm -rf -- "$CURRENT_BACK"
           cp -a "$RELEASE_DIR/back" "$CURRENT_BACK"
 
@@ -355,13 +359,5 @@ jobs:
             | while IFS= read -r old_release; do
                   rm -rf -- "$old_release"
                   echo "Removed old release: $old_release"
-              done
-
-          find "$STAGING/ready" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
-            | sort -nr \
-            | tail -n +3 \
-            | cut -d' ' -f2- \
-            | while IFS= read -r old_release; do
-                  rm -rf -- "$old_release"
               done
           REMOTE
