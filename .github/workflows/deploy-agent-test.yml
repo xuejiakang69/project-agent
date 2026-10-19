@@ -179,14 +179,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          RELEASE_ID="$GITHUB_SHA"
+          VERSION_FILE="VERSION"
+          test -f "$VERSION_FILE"
+          RELEASE_ID="$(tr -d '[:space:]' < "$VERSION_FILE")"
+          [[ "$RELEASE_ID" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] || {
+            echo "Invalid VERSION: $RELEASE_ID" >&2
+            exit 1
+          }
+          echo "Deploy version: $RELEASE_ID"
           UPLOAD_ID="${RELEASE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
           STAGING="/home/deploy/deploy-staging"
           INCOMING="$STAGING/incoming/$UPLOAD_ID"
           READY="$STAGING/ready/$RELEASE_ID"
 
-          [[ "$RELEASE_ID" =~ ^[0-9a-f]{40}$ ]]
+
           [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ ]]
           [[ "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ ]]
 
@@ -281,4 +288,80 @@ jobs:
           fi
 
           echo "注意：本步骤只上传和校验，不执行应用部署。"
+          REMOTE
+
+      - name: Deploy backend and retain recent releases
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          BACKEND_RESTART_CMD: ${{ secrets.BACKEND_RESTART_CMD }}
+        run: |
+          set -euo pipefail
+
+          RELEASE_ID="$(tr -d '[:space:]' < VERSION)"
+          REMOTE="$DEPLOY_USER@$DEPLOY_HOST"
+          STAGING="/home/deploy/deploy-staging"
+          READY="$STAGING/ready/$RELEASE_ID"
+          TARGET_BASE="/www/wwwroot/fastapi/fastapi-test"
+
+          ssh \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            -p "$DEPLOY_PORT" "$REMOTE" \
+            bash -s -- "$READY" "$TARGET_BASE" "$STAGING" "$RELEASE_ID" "$BACKEND_RESTART_CMD" <<'REMOTE'
+          set -euo pipefail
+
+          READY="$1"
+          TARGET_BASE="$2"
+          STAGING="$3"
+          RELEASE_ID="$4"
+          RESTART_CMD="$5"
+
+          RELEASES_ROOT="$TARGET_BASE/releases"
+          RELEASE_DIR="$RELEASES_ROOT/$RELEASE_ID"
+          CURRENT_BACK="$TARGET_BASE/current/back"
+          TEMP_DIR="$RELEASES_ROOT/.${RELEASE_ID}.tmp.$$"
+
+          test -f "$READY/backend.tar.gz"
+          test -d "$TARGET_BASE"
+
+          rm -rf -- "$TEMP_DIR"
+          mkdir -p "$TEMP_DIR" "$RELEASES_ROOT"
+          tar -xzf "$READY/backend.tar.gz" -C "$TEMP_DIR"
+
+          test -d "$TEMP_DIR/back"
+          test -f "$TEMP_DIR/back/app/main.py"
+
+          rm -rf -- "$RELEASE_DIR"
+          mv -- "$TEMP_DIR" "$RELEASE_DIR"
+
+          mkdir -p "$TARGET_BASE/current"
+          rm -rf -- "$CURRENT_BACK"
+          cp -a "$RELEASE_DIR/back" "$CURRENT_BACK"
+
+          echo "Deployed version $RELEASE_ID"
+          echo "Release: $RELEASE_DIR/back"
+          echo "Current: $CURRENT_BACK"
+
+          if [[ -n "$RESTART_CMD" ]]; then
+              bash -lc "$RESTART_CMD"
+          fi
+
+          find "$RELEASES_ROOT" -mindepth 1 -maxdepth 1 -type d ! -name '.*.tmp.*' -printf '%T@ %p\n' \
+            | sort -nr \
+            | tail -n +3 \
+            | cut -d' ' -f2- \
+            | while IFS= read -r old_release; do
+                  rm -rf -- "$old_release"
+                  echo "Removed old release: $old_release"
+              done
+
+          find "$STAGING/ready" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+            | sort -nr \
+            | tail -n +3 \
+            | cut -d' ' -f2- \
+            | while IFS= read -r old_release; do
+                  rm -rf -- "$old_release"
+              done
           REMOTE
